@@ -98,11 +98,47 @@ app.use('*', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`📡 Ambiente: ${process.env.NODE_ENV}`);
-  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
+// Tratamento de erros não capturados
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection:', reason);
+  console.error('Promise:', promise);
 });
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  // Em produção, você pode querer encerrar o processo
+  // process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('⚠️ SIGTERM recebido, encerrando servidor...');
+  httpServer.close(() => {
+    console.log('✅ Servidor encerrado');
+    process.exit(0);
+  });
+});
+
+// Iniciar servidor com tratamento de erro
+try {
+  httpServer.listen(PORT, () => {
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`📡 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+  });
+
+  httpServer.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`❌ Porta ${PORT} já está em uso`);
+    } else {
+      console.error('❌ Erro ao iniciar servidor:', error);
+    }
+    process.exit(1);
+  });
+} catch (error) {
+  console.error('❌ Erro crítico ao iniciar servidor:', error);
+  process.exit(1);
+}
 
 export { io };
 
